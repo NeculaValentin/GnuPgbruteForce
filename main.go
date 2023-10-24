@@ -27,14 +27,13 @@ func decrypt(data []byte, pwd []byte) bool { //function to decrypt the data with
 		called = true
 		return pwd, nil
 	}
-
 	_, err := openpgp.ReadMessage(buffer, nil, prompt, nil) //try to decrypt the data, this function
 	isDecryptError := err != nil
 	return !isDecryptError
 }
 
 func worker(data []byte, wg *sync.WaitGroup, pwdCh <-chan string, resCh chan<- string) {
-	defer wg.Done() //when the function finishes, put the worker in done
+	defer wg.Done()
 	for pwd := range pwdCh {
 		if decrypt(data, []byte(pwd)) {
 			resCh <- pwd
@@ -51,8 +50,8 @@ func worker(data []byte, wg *sync.WaitGroup, pwdCh <-chan string, resCh chan<- s
 // it sends the passwords to the channel
 // it closes the channel when it finishes
 func pwdGenerator(ch chan<- string, maxPwdLength int, chars string) {
-	var generate func([]byte, int)               //the function to generate the passwords
-	generate = func(prefix []byte, length int) { //the function to generate the passwords
+	var generate func([]byte, int)
+	generate = func(prefix []byte, length int) {
 		if length == 0 {
 			pwd := string(prefix)
 			ch <- pwd
@@ -60,13 +59,13 @@ func pwdGenerator(ch chan<- string, maxPwdLength int, chars string) {
 		}
 		for _, c := range chars {
 			newPrefix := append(append([]byte{}, prefix...), byte(c)) //append the character to the prefix
-			generate(newPrefix, length-1)                             //call the function with the new prefix and the length - 1
+			generate(newPrefix, length-1)
 		}
 	}
-	for length := 1; length <= maxPwdLength; length++ { //loop from 1 to the max password length
+	for length := 1; length <= maxPwdLength; length++ {
 		generate([]byte{}, length) //call the function with an empty prefix and the length
 	}
-	close(ch) //close the channel
+	close(ch)
 }
 
 func main() {
@@ -74,8 +73,8 @@ func main() {
 
 	debug.SetGCPercent(-1) // Disable Garbage Collector for performance improvements
 
-	defaultMaxPwdLength := 4                     //default max password length to try
-	defaultChars := "abcdefghijklmnopqrstuvwxyz" //default characters to use for generating the password
+	defaultMaxPwdLength := 4
+	defaultChars := "abcdefghijklmnopqrstuvwxyz"
 
 	// Parse command-line arguments
 	pathPtr := flag.String("p", "", "Provide the path of the file to decrypt.")
@@ -87,8 +86,8 @@ func main() {
 		log.Fatal("Provide the path of the file to decrypt using -p=filepath")
 	}
 
-	data, err := os.ReadFile(*pathPtr) //read the file
-	if err != nil {                    //check for errors
+	data, err := os.ReadFile(*pathPtr)
+	if err != nil {
 		log.Fatal("Error while parsing the file: ", err)
 	}
 
@@ -96,9 +95,8 @@ func main() {
 	//not using more because it uses IO, and having more workers than cores will not increase performance
 	workers := runtime.NumCPU()
 
-	//create a channel with a buffer of 1000 to store the passwords
-	//this ensures that the workers will not wait for the password generator to generate a password
-	//this also ensures that the password generator will not wait for the workers to finish
+	//create a channel with a buffer of 1000 to store the passwords.
+	//this ensures that the workers will not wait for the password generator to generate a password.
 	//no need to make it bigger cause the decryption takes more time than the password generation
 	pwdCh := make(chan string, 1000)
 

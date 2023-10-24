@@ -1,11 +1,15 @@
 #!/bin/bash
 
+# This script decrypts a file using a password
+# Usage: ./decrypt.sh <file> <password> <start_time>
 encrypted_file="$1"
 password="$2"
 start_time="$3"
 
-echo "$password" | gpg --batch --yes --passphrase-fd 0 -d "$encrypted_file" >/dev/null 2>/dev/null
+# Try to decrypt the file using gpg
+echo "$password" | gpg --batch --yes --no-use-agent --passphrase-fd 0 -d "$encrypted_file" >/dev/null 2>/dev/null
 
+# If the exit code is 0, then the password was correct
 if [[ $? -eq 0 ]]; then
 
   current_time=$(date +%s)

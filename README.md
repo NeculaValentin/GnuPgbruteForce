@@ -20,7 +20,7 @@ I tried to use [SecLists](
 I found the archivo.pdf passphrase and it took 1 hour and 43 minutes to find it.
 The passphrase was "sgrd"
 
-![img_1.png](img_1.png)
+![img.png](img.png)
 
 ## Usage
 

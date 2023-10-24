@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"golang.org/x/crypto/openpgp"
 	"log"
@@ -11,8 +12,6 @@ import (
 	"sync"
 	"time"
 )
-
-const maxPwdLength = 5 //the max password length (more than 5 will take too long)
 
 // A PromptFunction is used as a callback by functions that may need to decrypt
 // a private key, or prompt for a passphrase. If the decrypted private key or given passphrase isn't
@@ -51,8 +50,7 @@ func worker(data []byte, wg *sync.WaitGroup, pwdCh <-chan string, resCh chan<- s
 // it stops when it reaches the max password length
 // it sends the passwords to the channel
 // it closes the channel when it finishes
-func pwdGenerator(ch chan<- string) {
-	const chars = "abcdefghijklmnopqrstuvwxyz"   //the characters to use in the passwords (ascii lowercase letters, from the challenge)
+func pwdGenerator(ch chan<- string, maxPwdLength int, chars string) {
 	var generate func([]byte, int)               //the function to generate the passwords
 	generate = func(prefix []byte, length int) { //the function to generate the passwords
 		if length == 0 {
@@ -76,13 +74,21 @@ func main() {
 
 	debug.SetGCPercent(-1) // Disable Garbage Collector for performance improvements
 
-	if len(os.Args) < 2 { //file path as argument
-		log.Fatal("Provide the path of the file to decrypt")
+	defaultMaxPwdLength := 4                     //default max password length to try
+	defaultChars := "abcdefghijklmnopqrstuvwxyz" //default characters to use for generating the password
+
+	// Parse command-line arguments
+	pathPtr := flag.String("p", "", "Provide the path of the file to decrypt.")
+	maxPwdLengthPtr := flag.Int("l", defaultMaxPwdLength, "Max password length to try.")
+	charsPtr := flag.String("chars", defaultChars, "Characters to use for generating the password.")
+	flag.Parse()
+
+	if *pathPtr == "" {
+		log.Fatal("Provide the path of the file to decrypt using -p=filepath")
 	}
 
-	path := os.Args[1]             //get the file path from the console
-	data, err := os.ReadFile(path) //read the file
-	if err != nil {                //check for errors
+	data, err := os.ReadFile(*pathPtr) //read the file
+	if err != nil {                    //check for errors
 		log.Fatal("Error while parsing the file: ", err)
 	}
 
@@ -111,7 +117,7 @@ func main() {
 
 	//start the password generator
 	//no need to add it to the wait group because if the password is found before the generator finishes, the program needs to exit
-	go pwdGenerator(pwdCh)
+	go pwdGenerator(pwdCh, *maxPwdLengthPtr, *charsPtr)
 
 	//select statement to start the goroutine to wait for the wait group to finish
 	select {

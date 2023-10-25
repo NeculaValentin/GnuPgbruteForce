@@ -101,7 +101,9 @@ With GOOS and GOARCH you can specify the OS and architecture you want to compile
 
 ### Results
 
-I found the archivo.pdf passphrase and it took 1 hour and 43 minutes to find it.
+The first time I found the archivo.pdf passphrase it took 1 hour and 43 minutes to find it.
+Then I changed the code, and I divided equally the passwords betewwn the workers, starting from a different index.
+This way, all the passwords with the last letters are tried much earlier.
+I found the password in 16 Minutes and 47 Seconds
 The passphrase was "sgrd"
-
 ![img.png](img.png)

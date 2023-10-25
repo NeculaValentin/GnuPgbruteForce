@@ -82,13 +82,13 @@ It has three parameters:
     - Default: "abcdefghijklmnopqrstuvwxyz"
 
 ``` bash
-go run main.go -p=cifradoAsimetrico.pdf.gpg -l=2 -chars="abcdefghijklmnopqrstuvwxyz"
+cd bin
+go run GnuPgbruteForce.go -p=cifradoAsimetrico.pdf.gpg -l=2 -chars="abcdefghijklmnopqrstuvwxyz"
 ```
 
 ## Executable
 
-The executable is in the bin folder.
-It is compiled for Linux OS.
+The executables are in the bin folder, compiled for macOS and Linux OS.
 Maybe it won't work because I could not test it because I have an arch64 system.
 In that case, it can be compiled with the following command:
 

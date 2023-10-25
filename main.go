@@ -44,26 +44,24 @@ func worker(data []byte, wg *sync.WaitGroup, pwdCh <-chan string, resCh chan<- s
 
 // this is a recursive function that generates all possible passwords
 // it starts with a length of 1 and goes up to the max password length
-// it generates all possible passwords with the current length
-// then it calls itself with the next length
-// it stops when it reaches the max password length
+// it has a start and end index to generate only a part of the passwords
 // it sends the passwords to the channel
 // it closes the channel when it finishes
-func pwdGenerator(ch chan<- string, maxPwdLength int, chars string) {
-	var generate func([]byte, int)
-	generate = func(prefix []byte, length int) {
+func pwdGenerator(ch chan<- string, maxPwdLength int, chars string, startIndex, endIndex int) {
+	var generate func([]byte, int, int, int)
+	generate = func(prefix []byte, length int, idxStart int, idxEnd int) {
 		if length == 0 {
-			pwd := string(prefix)
-			ch <- pwd
+			ch <- string(prefix)
 			return
 		}
-		for _, c := range chars {
-			newPrefix := append(append([]byte{}, prefix...), byte(c)) //append the character to the prefix
-			generate(newPrefix, length-1)
+		for idx := idxStart; idx <= idxEnd; idx++ {
+			c := chars[idx]
+			newPrefix := append(append([]byte{}, prefix...), byte(c))
+			generate(newPrefix, length-1, 0, len(chars)-1) // Now use full range
 		}
 	}
-	for length := 1; length <= maxPwdLength; length++ {
-		generate([]byte{}, length) //call the function with an empty prefix and the length
+	for l := 1; l <= maxPwdLength; l++ {
+		generate([]byte{}, l, startIndex, endIndex)
 	}
 	close(ch)
 }
@@ -95,27 +93,35 @@ func main() {
 	//not using more because it uses IO, and having more workers than cores will not increase performance
 	workers := runtime.NumCPU()
 
-	//create a channel with a buffer of 1000 to store the passwords.
-	//this ensures that the workers will not wait for the password generator to generate a password.
-	//no need to make it bigger cause the decryption takes more time than the password generation
-	pwdCh := make(chan string, 1000)
-
 	//create a channel with a buffer of 1 where the workers will send the result
 	resCh := make(chan string, 1)
 
 	//create a wait group to wait for the workers to finish
 	var wg sync.WaitGroup
 
-	//start the workers and add them to the wait group
-	//this ensures that the program will not exit before the workers finish
+	partitionSize := len(*charsPtr) / workers
+	rest := len(*charsPtr) % workers
+
+	//split the work between the workers and split also the characters between the workers
+	//in this way if the password starts with a letter in the end of the alphabet, the last worker will find it faster
 	for i := 0; i < workers; i++ {
+		startIdx := i * partitionSize
+		endIdx := (i+1)*partitionSize - 1
+		if i == workers-1 {
+			endIdx += rest
+		}
+
+		pwdCh := make(chan string, 1000)
+
+		//start the workers and add them to the wait group
+		//this ensures that the program will not exit before the workers finish
 		wg.Add(1)
 		go worker(data, &wg, pwdCh, resCh)
-	}
 
-	//start the password generator
-	//no need to add it to the wait group because if the password is found before the generator finishes, the program needs to exit
-	go pwdGenerator(pwdCh, *maxPwdLengthPtr, *charsPtr)
+		//start the password generator
+		//no need to add it to the wait group because if the password is found before the generator finishes, the program needs to exit
+		go pwdGenerator(pwdCh, *maxPwdLengthPtr, *charsPtr, startIdx, endIdx)
+	}
 
 	//select statement to start the goroutine to wait for the wait group to finish
 	select {
@@ -128,7 +134,7 @@ func main() {
 			close(ch) //close the channel to return
 		}() //start the goroutine
 		return ch //return the channel
-	}(): //if the wait group finishes without finding the password is found
+	}(): //if the wait group finishes without finding, the password is found
 		fmt.Println("No password found")
 	}
 
